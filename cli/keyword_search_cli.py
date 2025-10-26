@@ -18,11 +18,20 @@ def main() -> None:
   # tf command
   tf_parser = subparsers.add_parser("tf", help="Get the term frequency for a document")
   tf_parser.add_argument("doc_id", type=int, help="Document id")
-  tf_parser.add_argument("term", type=str, help="target token for frequnecy")
+  tf_parser.add_argument("term", type=str, help="target token for frequency")
 
   # idf command
   idf_parser = subparsers.add_parser("idf", help="Get the inverse document frequency (idf) of a term")
   idf_parser.add_argument("term", type=str, help="term to idf")
+
+  # tf-idf command
+  tf_idf_parser = subparsers.add_parser("tfidf", help="Get the TF-IDF score of a term")
+  tf_idf_parser.add_argument("doc_id", type=int, help="Target document id")
+  tf_idf_parser.add_argument("term", type=str, help="target token for TF-IDF score")
+
+  # bm25idf command
+  bm25idf_parser = subparsers.add_parser("bm25idf", help="Get the bm25idf score of a term")
+  bm25idf_parser.add_argument("term", type=str, help="target token for bm25idf score")
 
   args = parser.parse_args()
   
@@ -58,14 +67,26 @@ def main() -> None:
     case "tf":
       InvertedIndexer = InvertedIndex()
       InvertedIndexer.load()
-      tf_result = InvertedIndexer.get_tf(args.doc_id, args.term)
-      print(f"Term frequency of '{args.term}' in doc {args.doc_id}: {tf_result}")
+      tf = InvertedIndexer.get_tf(args.doc_id, args.term)
+      print(f"Term frequency of '{args.term}' in doc {args.doc_id}: {tf}")
 
     case "idf":
       InvertedIndexer = InvertedIndex()
       InvertedIndexer.load()
       idf = InvertedIndexer.get_idf(args.term)
       print(f"idf for '{args.term}': {idf:.2f}")
+
+    case "tfidf":
+      InvertedIndexer = InvertedIndex()
+      InvertedIndexer.load()
+      tf_idf = InvertedIndexer.get_tfidf(args.doc_id, args.term)
+      print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+
+    case "bm25idf":
+      InvertedIndexer = InvertedIndex()
+      InvertedIndexer.load()
+      bm25idf = InvertedIndexer.get_bm25_idf(args.term)
+      print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
 
     case _:
       parser.print_help()
