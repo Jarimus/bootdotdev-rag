@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse
+import argparse, math
 from data_handling import load_movies
 from text_handling import process_string, normalize_string
 from inverted_index import InvertedIndex
@@ -14,6 +14,15 @@ def main() -> None:
 
   # Build command
   subparsers.add_parser("build", help="Build and save inverted index to disk")
+
+  # tf command
+  tf_parser = subparsers.add_parser("tf", help="Get the term frequency for a document")
+  tf_parser.add_argument("doc_id", type=int, help="Document id")
+  tf_parser.add_argument("term", type=str, help="target token for frequnecy")
+
+  # idf command
+  idf_parser = subparsers.add_parser("idf", help="Get the inverse document frequency (idf) of a term")
+  idf_parser.add_argument("term", type=str, help="term to idf")
 
   args = parser.parse_args()
   
@@ -45,6 +54,18 @@ def main() -> None:
 
       test_search: list[int] = InvertedIndexer.get_documents("merida")
       print("docID of first:", test_search[0])
+
+    case "tf":
+      InvertedIndexer = InvertedIndex()
+      InvertedIndexer.load()
+      tf_result = InvertedIndexer.get_tf(args.doc_id, args.term)
+      print(f"Term frequency of '{args.term}' in doc {args.doc_id}: {tf_result}")
+
+    case "idf":
+      InvertedIndexer = InvertedIndex()
+      InvertedIndexer.load()
+      idf = InvertedIndexer.get_idf(args.term)
+      print(f"idf for '{args.term}': {idf:.2f}")
 
     case _:
       parser.print_help()

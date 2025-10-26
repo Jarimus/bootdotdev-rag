@@ -28,3 +28,7 @@ def stem_words(words: list[str]) -> list[str]:
 
 def process_string(text: str) -> list[str]:
   return stem_words(remove_stopwords(tokenize_string(normalize_string(text))))
+
+if __name__ == '__main__':
+  text = "grizzly"
+  print(process_string(text))
