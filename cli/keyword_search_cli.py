@@ -59,10 +59,6 @@ def main() -> None:
     case "build":
       InvertedIndexer = InvertedIndex()
       InvertedIndexer.build()
-      InvertedIndexer.save()
-
-      test_search: list[int] = InvertedIndexer.get_documents("merida")
-      print("docID of first:", test_search[0])
 
     case "tf":
       InvertedIndexer = InvertedIndex()

@@ -1,7 +1,7 @@
 from text_handling import process_string
 from data_handling import load_movies
 from collections import Counter
-import pickle, pathlib, math
+import pickle, pathlib, math, shutil
 
 class InvertedIndex:
 
@@ -56,11 +56,23 @@ class InvertedIndex:
     return self.get_tf(doc_id, term) * self.get_idf(term)
 
   def build(self):
+    # Only build if cache dir does not exist
+    if pathlib.Path("cache").exists():
+      print("Cache directory already exists, loading cache...")
+      try:
+        self.load()
+        return
+      except FileNotFoundError:
+        print("Cache file missing. Building cache.")
+        return
+    # First load data into memory
     movies = load_movies()
     for i, m in enumerate(movies["movies"]):
       self.__add_document(int(m["id"]), f"{m['title']} {m['description']}")
       self.docmap[int(m["id"])] = m
       print(f"Building... ({i}/{len(movies["movies"])})")
+    # Save to file
+    self.save()
 
   def save(self):
     # Ensure directory exists
@@ -84,12 +96,12 @@ class InvertedIndex:
       with open(self.tf_filepath, "rb") as file:
         self.term_frequencies = pickle.load(file)
     except FileNotFoundError:
-      print("Cache does not exist")
+      print("Cache file missing.")
       while True:
         want_cache = input("Build a new cache? (Y/N)\n")
         if want_cache.lower() == "n":
           break
         if want_cache.lower() == "y":
+          shutil.rmtree("cache")
           self.build()
-          self.save()
           break
