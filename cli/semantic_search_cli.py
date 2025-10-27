@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from lib.semantic_search import verify_model, embed_text
+from lib.semantic_search import verify_model, embed_text, verify_embeddings
 
 import argparse
 
@@ -15,6 +15,9 @@ def main():
   embed_text_subparser = subparsers.add_parser("embed_text", help="Embed text with the semantic model")
   embed_text_subparser.add_argument("text", help="text to embed")
 
+  # Verify embeddings command
+  subparsers.add_parser("verify_embeddings", help="Verifies the embeddings")
+
   # Parse arguments
   args = parser.parse_args()
 
@@ -24,6 +27,9 @@ def main():
 
     case "embed_text":
       embed_text(args.text)
+
+    case "verify_embeddings":
+      verify_embeddings()
 
     case _:
       parser.print_help()
