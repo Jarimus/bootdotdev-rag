@@ -50,3 +50,13 @@ def bm25tf_command(doc_id: int, term: str, k1: float = BM25_K1, b: float = BM25_
   InvertedIndexer.load()
   bm25tf = InvertedIndexer.get_bm25_tf(doc_id, term, k1)
   print(f"BM25 TF score of '{term}' in document '{doc_id}': {bm25tf:.2f}")
+
+def bm25search_command(query: str, limit: int):
+  # Load the data into cache
+  InvertedIndexer = InvertedIndex()
+  InvertedIndexer.load()
+  # initiate the search
+  bm25search_result = InvertedIndexer.bm25_search(query, limit)
+  for doc_id, score in bm25search_result:
+    movie = InvertedIndexer.docmap[doc_id]
+    print(f"({doc_id}) {movie['title']} - Score: {score:.2f}")

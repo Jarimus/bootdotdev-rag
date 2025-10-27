@@ -71,6 +71,25 @@ class InvertedIndex:
     return (tf * (k1 + 1)) / (tf + k1 * length_norm)
     # return (tf * (k1 + 1)) / (tf + k1)
 
+  def get_bm25score(self, doc_id: int, term: str):
+    return self.get_bm25_tf(doc_id, term) * self.get_bm25_idf(term)
+  
+  def bm25_search(self, query: str, limit: int = 5):
+    # tokenize the query
+    search_tokens = process_string(query)
+    # Calculate bm25 score for each document
+    bm25_scores: dict[int, float] = {}
+    for doc_id in self.docmap.keys():
+      score = 0
+      for token in search_tokens:
+        score += self.get_bm25score(doc_id, token)
+      bm25_scores[doc_id] = score
+    # Sort the scores, descending
+    sorted_scores: list[tuple[int, float]] = sorted(bm25_scores.items(), key=lambda item: item[1], reverse=True)
+    # Pick the top results by limit
+    top_scores = sorted_scores[:limit]
+    return top_scores
+
   def build(self):
     # Only build if cache dir does not exist
     if pathlib.Path(CACHE_DIR).exists():
