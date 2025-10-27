@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import argparse, math
-from data_handling import load_movies
-from text_handling import process_string, normalize_string
+import argparse
+from keyword_commands import *
 from inverted_index import InvertedIndex
+from search_utils import BM25_K1, BM25_B
 
 def main() -> None:
   parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -33,56 +33,37 @@ def main() -> None:
   bm25idf_parser = subparsers.add_parser("bm25idf", help="Get the bm25idf score of a term")
   bm25idf_parser.add_argument("term", type=str, help="target token for bm25idf score")
 
+  # bm25tf command
+  bm25_tf_parser = subparsers.add_parser("bm25tf", help="Get BM25 TF score for a given document ID and term")
+  bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+  bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+  bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
+  bm25_tf_parser.add_argument("b", type=float, nargs='?', default=BM25_B, help="Tunable BM25 b parameter")
+
   args = parser.parse_args()
   
   match args.command:
     case "search":
-      print(f"Searching for: {args.query}")
-      InvertedIndexer = InvertedIndex()
-      InvertedIndexer.load()
-      search_tokens = process_string(args.query)
-      search_result = []
-      done = False
-      for token in search_tokens:
-        if done: break
-        doc_ids = InvertedIndexer.get_documents(token)
-        for id in doc_ids:
-          search_result.append(InvertedIndexer.docmap[id])
-          if len(search_result) >= 5:
-            done = True
-            break
-      
-      print("Search results:")
-      for i, movie in enumerate(search_result):
-        print(f"{i+1}: {movie['title']}")
+      search_command(args.query)
 
     case "build":
       InvertedIndexer = InvertedIndex()
       InvertedIndexer.build()
 
     case "tf":
-      InvertedIndexer = InvertedIndex()
-      InvertedIndexer.load()
-      tf = InvertedIndexer.get_tf(args.doc_id, args.term)
-      print(f"Term frequency of '{args.term}' in doc {args.doc_id}: {tf}")
+      tf_command(args.doc_id, args.term)
 
     case "idf":
-      InvertedIndexer = InvertedIndex()
-      InvertedIndexer.load()
-      idf = InvertedIndexer.get_idf(args.term)
-      print(f"idf for '{args.term}': {idf:.2f}")
+      idf_command(args.term)
 
     case "tfidf":
-      InvertedIndexer = InvertedIndex()
-      InvertedIndexer.load()
-      tf_idf = InvertedIndexer.get_tfidf(args.doc_id, args.term)
-      print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+      tfidf_command(args.doc_id, args.term)
 
     case "bm25idf":
-      InvertedIndexer = InvertedIndex()
-      InvertedIndexer.load()
-      bm25idf = InvertedIndexer.get_bm25_idf(args.term)
-      print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+      bm25idf_command(args.term)
+
+    case "bm25tf":
+      bm25tf_command(args.doc_id, args.term, args.k1, args.b)
 
     case _:
       parser.print_help()
