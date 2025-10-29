@@ -1,7 +1,8 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np, pathlib, os
-from search_utils import CACHE_DIR, DEFAULT_CHUNK_SIZE
+from search_utils import *
 from data_handling import load_movies
+import regex as re
 
 class SemanticSearch:
 
@@ -110,11 +111,26 @@ def semantic_search_command(query: str, limit: int = 5):
     abbreviated_description = " ".join(movie[1]['description'].split()[:20])
     print(f"{i+1}: {movie[1]['title']} (score: {movie[0]})\n{abbreviated_description}...")
 
-def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = 0) -> list[str]:
   words: list[str] = text.split()
   chunks: list[str] = []
   i = 0
   while i < len(words):
-    chunks.append(" ".join(words[i:i+chunk_size]))
+    if i == 0:
+      chunks.append(" ".join(words[ i : i+chunk_size ]))
+    else:
+      chunks.append(" ".join(words[ i-overlap : i+chunk_size ]))
     i += chunk_size
+  return chunks
+
+def semantic_chunking(text: str, max_chunk_size: int = MAX_SEMANTIC_CHUNK_SIZE, overlap: int = 0) -> list[str]:
+  sentences = re.split(r"(?<=[.!?])\s+", text)
+  chunks: list[str] = []
+  i = 0
+  while i < len(sentences):
+    if i == 0:
+      chunks.append(" ".join(sentences[ i : i+max_chunk_size ]))
+    else:
+      chunks.append(" ".join(sentences[ i-overlap : i+max_chunk_size ]))
+    i += max_chunk_size
   return chunks
