@@ -1,17 +1,16 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np, pathlib, os
 from search_utils import *
-from data_handling import load_movies
-import regex as re
+from data_handling import load_movies, CACHE_DIR, MOVIE_EMBEDDINGS_FILE
 
 class SemanticSearch:
 
-  def __init__(self) -> None:
+  def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
     print("Loading model...")
-    self.model = SentenceTransformer('all-MiniLM-L6-v2')
+    self.model = SentenceTransformer(model_name)
     print("Model ready!")
     self.embeddings = None
-    self.embeddings_filepath = os.path.join(CACHE_DIR, "movie_embeddings.npy")
+    self.embeddings_filepath = os.path.join(CACHE_DIR, MOVIE_EMBEDDINGS_FILE)
     self.documents = None
     self.document_map = {}
 
@@ -115,22 +114,7 @@ def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap
   words: list[str] = text.split()
   chunks: list[str] = []
   i = 0
-  while i < len(words):
-    if i == 0:
-      chunks.append(" ".join(words[ i : i+chunk_size ]))
-    else:
-      chunks.append(" ".join(words[ i-overlap : i+chunk_size ]))
-    i += chunk_size
-  return chunks
-
-def semantic_chunking(text: str, max_chunk_size: int = MAX_SEMANTIC_CHUNK_SIZE, overlap: int = 0) -> list[str]:
-  sentences = re.split(r"(?<=[.!?])\s+", text)
-  chunks: list[str] = []
-  i = 0
-  while i < len(sentences):
-    if i == 0:
-      chunks.append(" ".join(sentences[ i : i+max_chunk_size ]))
-    else:
-      chunks.append(" ".join(sentences[ i-overlap : i+max_chunk_size ]))
-    i += max_chunk_size
+  while i < len(words) - overlap:
+    chunks.append(" ".join(words[ i : i+chunk_size ]))
+    i += chunk_size - overlap
   return chunks

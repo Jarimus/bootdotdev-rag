@@ -1,19 +1,20 @@
 from text_handling import process_string
 from data_handling import load_movies
 from collections import Counter
-from search_utils import BM25_K1, BM25_B, CACHE_DIR
+from search_utils import BM25_K1, BM25_B
+from data_handling import CACHE_DIR, INDEX_FILE, DOCMAP_FILE, DOC_LENGTHS_FILE, TERM_FREQ_FILE
 import pickle, pathlib, math, shutil, os
 
 class InvertedIndex:
 
   def __init__(self) -> None:
-    self.index_filepath = os.path.join(CACHE_DIR, "index.pkl")
+    self.index_filepath = os.path.join(CACHE_DIR, INDEX_FILE)
     self.index: dict[str, set[int]] =  {}
-    self.docmap_filepath = os.path.join(CACHE_DIR, "docmap.pkl")
+    self.docmap_filepath = os.path.join(CACHE_DIR, DOCMAP_FILE)
     self.docmap: dict[int, dict] = {}
     self.doc_lengths: dict = {}
-    self.doc_lengths_filepath = os.path.join(CACHE_DIR, "doc_lengths.pkl")
-    self.tf_filepath = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+    self.doc_lengths_filepath = os.path.join(CACHE_DIR, DOC_LENGTHS_FILE)
+    self.tf_filepath = os.path.join(CACHE_DIR, TERM_FREQ_FILE)
     self.term_frequencies: dict[int, Counter[str]] = {}
   
   def __single_term_to_token(self, term: str) -> str:
@@ -69,7 +70,6 @@ class InvertedIndex:
     tf = self.get_tf(doc_id, term)
     length_norm = 1 - b + b * (self.doc_lengths[doc_id] / self.__get_avg_doc_length())
     return (tf * (k1 + 1)) / (tf + k1 * length_norm)
-    # return (tf * (k1 + 1)) / (tf + k1)
 
   def get_bm25score(self, doc_id: int, term: str):
     return self.get_bm25_tf(doc_id, term) * self.get_bm25_idf(term)
