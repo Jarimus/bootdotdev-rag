@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from lib.semantic_search import verify_model, embed_text, verify_embeddings
+from lib.semantic_search import *
 
 import argparse
 
@@ -18,6 +18,15 @@ def main():
   # Verify embeddings command
   subparsers.add_parser("verify_embeddings", help="Verifies the embeddings")
 
+  # embedquery command
+  embedquery_subparser = subparsers.add_parser("embedquery", help="Embed query with the semantic model")
+  embedquery_subparser.add_argument("query", help="query to be embedded")
+
+  # search command
+  search_subparser = subparsers.add_parser("search", help="perform a semantic search")
+  search_subparser.add_argument("query", help="query for the search")
+  search_subparser.add_argument("--limit", type=int, nargs="?", default=5, help="tunable limit for top results to display")
+
   # Parse arguments
   args = parser.parse_args()
 
@@ -30,6 +39,12 @@ def main():
 
     case "verify_embeddings":
       verify_embeddings()
+
+    case "embedquery":
+      embed_query_text(args.query)
+
+    case "search":
+      semantic_search_command(args.query, args.limit)
 
     case _:
       parser.print_help()
