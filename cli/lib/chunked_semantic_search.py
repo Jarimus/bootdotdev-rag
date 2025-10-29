@@ -1,4 +1,4 @@
-from lib.semantic_search import SemanticSearch
+from lib.semantic_search import SemanticSearch, cosine_similarity
 from data_handling import *
 from search_utils import *
 import numpy as np
@@ -45,14 +45,45 @@ class ChunkedSemanticSearch(SemanticSearch):
       with open(Path(CACHE_DIR, CHUNK_EMBEDDINGS_FILE), "rb") as file:
         self.chunk_embeddings = np.load(file)
       with open(Path(CACHE_DIR, CHUNK_METADATA_FILE), "r") as file:
-        self.chunk_metadata = json.load(file)
+        self.chunk_metadata = json.load(file)["chunks"]
       return self.chunk_embeddings
     else:
       print("Chunk embeddings or metadata not found in cache. Building...")
       return self.build_chunk_embeddings(documents)
     
-  def search_chunks(self, query: str, limit: int = 10):
-    pass
+  def search_chunks(self, query: str, limit: int = 10) -> list:
+    if self.chunk_embeddings is None or self.chunk_metadata is None:
+      print("Chunk embeddings or metadata not found. Exiting...")
+      return []
+    query_embedding = self.generate_embedding(query)
+    chunk_scores: list[dict] = []
+    print("Scoring movies...")
+    for chunk_emb, chunk_meta in zip(self.chunk_embeddings, self.chunk_metadata):
+      score = cosine_similarity(query_embedding, chunk_emb)
+      chunk_scores.append({
+        "chunk_idx": chunk_meta['chunk_idx'],
+        "movie_idx": chunk_meta['movie_idx'],
+        "score": score
+      })
+    movie_scores: dict[str, float] = {}
+    for c_score in chunk_scores:
+      if c_score['movie_idx'] not in movie_scores or c_score['score'] > movie_scores[c_score['movie_idx']]:
+        movie_scores[c_score['movie_idx']] = c_score['score']
+    movie_scores_sorted: list[tuple[str, float]] = sorted(movie_scores.items(), key=lambda item: item[1], reverse=True)
+    movie_scores_sorted = movie_scores_sorted[:limit]
+    final_result: list[dict] = []
+    for score in movie_scores_sorted:
+      id = score[0]
+      score = score[1]
+      doc = self.document_map[id]
+      final_result.append({
+      "id": id,
+      "title": doc["title"],
+      "document": doc["description"][:100],
+      "score": round(score, SCORE_PRECISION),
+      "metadata": {}
+    })
+    return final_result
 
 
 def semantic_chunking(text: str, max_chunk_size: int = MAX_SEMANTIC_CHUNK_SIZE, overlap: int = 0) -> list[str]:
@@ -68,3 +99,9 @@ def embed_chunks_command() -> np.ndarray:
   movies = load_movies()["movies"]
   CSS = ChunkedSemanticSearch()
   return CSS.load_or_create_chunk_embeddings(movies)
+
+def search_chunked_command(query: str, limit: int = 10) -> list[dict]:
+  movies = load_movies()["movies"]
+  CSS = ChunkedSemanticSearch()
+  CSS.load_or_create_chunk_embeddings(movies)
+  return CSS.search_chunks(query, limit)

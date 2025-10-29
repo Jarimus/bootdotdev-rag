@@ -2,7 +2,7 @@
 
 from lib.semantic_search import *
 from search_utils import *
-from lib.chunked_semantic_search import embed_chunks_command, semantic_chunking
+from lib.chunked_semantic_search import embed_chunks_command, semantic_chunking, search_chunked_command
 
 import argparse
 
@@ -42,7 +42,12 @@ def main():
   semantic_chunk_subparser.add_argument("--overlap", type=int, nargs="?", default=0, help="chunk overlap in words")
 
   # Embed chunks command
-  embed_chunks_subparser = subparsers.add_parser("embed_chunks", help="Embed some chunks")
+  subparsers.add_parser("embed_chunks", help="Embed some chunks")
+
+  # Search chunked command
+  search_chunked_subparser = subparsers.add_parser("search_chunked", help="search chunked database")
+  search_chunked_subparser.add_argument("query", help="query for the search")
+  search_chunked_subparser.add_argument("--limit", type=int, nargs="?", default=10, help="limit for the results to display")
 
   # Parse arguments
   args = parser.parse_args()
@@ -78,7 +83,12 @@ def main():
     case "embed_chunks":
       embeddings = embed_chunks_command()
       print(f"Generated {len(embeddings)} chunked embeddings")
-      # print(f"Generated 72909 chunked embeddings")
+
+    case "search_chunked":
+      movies = search_chunked_command(args.query, args.limit)
+      for i, m in enumerate(movies):
+        print(f"\n{i+1}. {m['title']} (score: {m['score']:.4f})")
+        print(f"   {m['document']}...")
 
     case _:
       parser.print_help()
