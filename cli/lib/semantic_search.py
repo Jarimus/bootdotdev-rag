@@ -1,6 +1,6 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np, pathlib, os
-from search_utils import CACHE_DIR
+from search_utils import CACHE_DIR, DEFAULT_CHUNK_SIZE
 from data_handling import load_movies
 
 class SemanticSearch:
@@ -109,3 +109,12 @@ def semantic_search_command(query: str, limit: int = 5):
   for i, movie in enumerate(search_result):
     abbreviated_description = " ".join(movie[1]['description'].split()[:20])
     print(f"{i+1}: {movie[1]['title']} (score: {movie[0]})\n{abbreviated_description}...")
+
+def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE) -> list[str]:
+  words: list[str] = text.split()
+  chunks: list[str] = []
+  i = 0
+  while i < len(words):
+    chunks.append(" ".join(words[i:i+chunk_size]))
+    i += chunk_size
+  return chunks
