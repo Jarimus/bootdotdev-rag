@@ -1,7 +1,9 @@
 import argparse
 from lib.hybrid_search import normalize_values, HybridSearch
 from data_handling import load_movies
-from lib.gemini import enhance_query
+from lib.gemini import enhance_rewrite_query, enhance_spell_query, enhance_expand_query, rerank_query
+from time import sleep
+from tqdm import tqdm
 
 
 def main() -> None:
@@ -23,7 +25,8 @@ def main() -> None:
   rrf_search_parser.add_argument("query", type=str, help="text to initiate the search with")
   rrf_search_parser.add_argument("--k", type=int, nargs="?", default=50, help="The k parameter (a constant) controls the weight between higher-ranked results and lower-ranked ones. Defaults to 50. Suggested range: 20-100")
   rrf_search_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Limits the number of results. Defaults to 5.")
-  rrf_search_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method")
+  rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
+  rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="perform reranking after search.")
 
   args = parser.parse_args()
 
@@ -41,24 +44,56 @@ def main() -> None:
         print(f"""{i+1}. {r['doc']['title']}
    Hybrid score: {r['hybrid']:.3f}
    BM25: {r['bm25']:.3f}, Semantic: {r['semantic']:.3f}
-{r['doc']['description'][:100]}""")
+   {r['doc']['description'][:100]}""")
          
     case "rrf-search":
       match args.enhance:
         case "spell":
-          new_query = enhance_query(args.query)
+          new_query = enhance_spell_query(args.query)
+          if new_query != args.query:
+            print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{new_query.strip()}'\n")
+            args.query = new_query
+        case "rewrite":
+          new_query = enhance_rewrite_query(args.query)
+          if new_query != args.query:
+            print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{new_query.strip()}'\n")
+            args.query = new_query
+        case "expand":
+          new_query = enhance_expand_query(args.query)
           if new_query != args.query:
             print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{new_query.strip()}'\n")
             args.query = new_query
 
       movies = load_movies()["movies"]
       hybrid_search = HybridSearch(movies)
-      results = hybrid_search.rrf_search(args.query, args.k, args.limit)
-      for i, r in enumerate(results):
-        print(f"""{i+1}. {r['doc']['title']}
+      match args.rerank_method:
+        case "individual":
+          results = hybrid_search.rrf_search(args.query, args.k, args.limit * 5)
+          for r in tqdm(results, "LLM Reranking", len(results)):
+            doc = r["doc"]
+            try:
+              LLM_score = float(rerank_query(args.query, doc))
+              r["LLM_score"] = LLM_score
+            except ValueError:
+              print(f"LLM did not provide an appropriate ranking: {LLM_score}")
+              r["LLM_score"] = 0
+            sleep(3)
+          results.sort(key=lambda item: item["LLM_score"], reverse=True)
+          for i, r in enumerate(results[:args.limit]):
+            print(f"""{i+1}. {r['doc']['title']}
+   Rerank score: {r["LLM_score"]:.1f}/10
    RRF score: {r['hybrid']:.3f}
    BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
-{r['doc']['description'][:100]}...""")
+   {r['doc']['description'][:100]}...""")
+
+
+        case _:
+          results = hybrid_search.rrf_search(args.query, args.k, args.limit)
+          for i, r in enumerate(results):
+            print(f"""{i+1}. {r['doc']['title']}
+   RRF score: {r['hybrid']:.3f}
+   BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
+   {r['doc']['description'][:100]}...""")
 
     case _:
       parser.print_help()

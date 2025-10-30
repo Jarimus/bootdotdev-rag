@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np, pathlib, os
 from search_utils import *
 from data_handling import load_movies, CACHE_DIR, MOVIE_EMBEDDINGS_FILE
+from tqdm import tqdm
 
 class SemanticSearch:
 
@@ -57,7 +58,7 @@ class SemanticSearch:
       raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
     query_embedding = self.generate_embedding(query)
     search_result: list[tuple[float, dict]] = []
-    for doc_embedding, doc in zip(self.embeddings, self.documents):
+    for doc_embedding, doc in tqdm(zip(self.embeddings, self.documents), "Calculating cosine similarity", len(self.documents)):
       similarity_score = cosine_similarity(query_embedding, doc_embedding)
       search_result.append((similarity_score, doc))
     search_result.sort(key=lambda item: item[0], reverse=True)

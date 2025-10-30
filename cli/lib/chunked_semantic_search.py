@@ -4,6 +4,7 @@ from search_utils import *
 import numpy as np
 import regex as re
 from pathlib import Path
+from tqdm import tqdm
 
 class ChunkedSemanticSearch(SemanticSearch):
   def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
@@ -59,7 +60,7 @@ class ChunkedSemanticSearch(SemanticSearch):
       return []
     query_embedding = self.generate_embedding(query)
     chunk_scores: list[dict] = []
-    for chunk_emb, chunk_meta in zip(self.chunk_embeddings, self.chunk_metadata):
+    for chunk_emb, chunk_meta in tqdm(zip(self.chunk_embeddings, self.chunk_metadata), "Calculating semantic score", len(self.chunk_embeddings)):
       score = cosine_similarity(query_embedding, chunk_emb)
       chunk_scores.append({
         "chunk_idx": chunk_meta['chunk_idx'],

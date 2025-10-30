@@ -34,7 +34,7 @@ class InvertedIndex:
   def __add_document(self, doc_id: int, text: str):
     tokens = process_string(text)
     # Add tokens to index and increment term frequencies
-    for token in tokens:
+    for token in tqdm(tokens, "Indexing", len(tokens)):
       # index
       if token not in self.index:
         self.index[token] = set()
@@ -82,7 +82,7 @@ class InvertedIndex:
     search_tokens = process_string(query)
     # Calculate bm25 score for each document
     bm25_scores: dict[int, float] = {}
-    for doc_id in self.docmap.keys():
+    for doc_id in tqdm(self.docmap.keys(), "Calculating BM25 score", len(self.docmap)):
       score = 0
       for token in search_tokens:
         score += self.get_bm25score(doc_id, token)
@@ -109,7 +109,7 @@ class InvertedIndex:
       return
     # First load data into memory
     movies = load_movies()["movies"]
-    for m in tqdm(movies, "Adding documents...", len(movies)):
+    for m in tqdm(movies, "Adding documents", len(movies)):
       self.__add_document(int(m["id"]), f"{m['title']} {m['description']}")
       self.docmap[int(m["id"])] = m
     # Save to file
