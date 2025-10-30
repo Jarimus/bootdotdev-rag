@@ -53,7 +53,7 @@ class HybridSearch:
       if doc_id not in results:
         results[doc_id] = {}
       bm25_rrf = compute_rrf_score(i, k)
-      results[doc_id]["bm25"] = i
+      results[doc_id]["bm25"] = i+1
       results[doc_id]["bm25_score"] = bm25_rrf
       results[doc_id]["doc"] = self.idx.docmap[doc_id]
       semantic_rrf = results[doc_id].get("semantic_score", 0)
@@ -62,7 +62,7 @@ class HybridSearch:
       if doc_id not in results:
         results[doc_id] = {}
       semantic_rrf = compute_rrf_score(i, k)
-      results[doc_id]["semantic"] = i
+      results[doc_id]["semantic"] = i+1
       results[doc_id]["semantic_score"] = semantic_rrf
       results[doc_id]["doc"] = self.idx.docmap[doc_id]
       bm25_rrf = results[doc_id].get("bm25_score", 0)

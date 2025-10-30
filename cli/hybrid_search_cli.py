@@ -1,7 +1,8 @@
-import argparse
+import argparse, json
 from lib.hybrid_search import normalize_values, HybridSearch
 from data_handling import load_movies
-from lib.gemini import enhance_rewrite_query, enhance_spell_query, enhance_expand_query, rerank_query
+from sentence_transformers.cross_encoder import CrossEncoder
+from lib.gemini import enhance_rewrite_query, enhance_spell_query, enhance_expand_query, rerank_batch, rerank_individual
 from time import sleep
 from tqdm import tqdm
 
@@ -26,7 +27,7 @@ def main() -> None:
   rrf_search_parser.add_argument("--k", type=int, nargs="?", default=50, help="The k parameter (a constant) controls the weight between higher-ranked results and lower-ranked ones. Defaults to 50. Suggested range: 20-100")
   rrf_search_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Limits the number of results. Defaults to 5.")
   rrf_search_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
-  rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual"], help="perform reranking after search.")
+  rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder"], help="perform reranking after search.")
 
   args = parser.parse_args()
 
@@ -44,7 +45,8 @@ def main() -> None:
         print(f"""{i+1}. {r['doc']['title']}
    Hybrid score: {r['hybrid']:.3f}
    BM25: {r['bm25']:.3f}, Semantic: {r['semantic']:.3f}
-   {r['doc']['description'][:100]}""")
+   {r['doc']['description'][:100]}
+""")
          
     case "rrf-search":
       match args.enhance:
@@ -72,7 +74,7 @@ def main() -> None:
           for r in tqdm(results, "LLM Reranking", len(results)):
             doc = r["doc"]
             try:
-              LLM_score = float(rerank_query(args.query, doc))
+              LLM_score = float(rerank_individual(args.query, doc))
               r["LLM_score"] = LLM_score
             except ValueError:
               print(f"LLM did not provide an appropriate ranking: {LLM_score}")
@@ -84,8 +86,50 @@ def main() -> None:
    Rerank score: {r["LLM_score"]:.1f}/10
    RRF score: {r['hybrid']:.3f}
    BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
-   {r['doc']['description'][:100]}...""")
-
+   {r['doc']['description'][:100]}...
+   """)
+            
+        case "batch":
+          results = hybrid_search.rrf_search(args.query, args.k, args.limit * 5)
+          doc_list_str = ""
+          for i, r in enumerate(results):
+            doc_list_str += f"""Title: {r['doc']['title']}
+ID: {i}
+Description: {r['doc']['description']}
+-------------------------------------------------------"""
+          print(f"Reranking the top {args.limit} results using batch method...\n")
+          LLM_json = rerank_batch(args.query, doc_list_str)
+          LLM_IDs = json.loads(LLM_json)
+          print("LLM ranking:", LLM_IDs)
+          final_results = []
+          for i in LLM_IDs:
+            final_results.append(results[i])
+          for i, r in enumerate(final_results[:args.limit]):
+            print(f"""{i+1}. {r['doc']['title']}
+   Rerank rank: {i+1}
+   RRF score: {r['hybrid']:.3f}
+   BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
+   {r['doc']['description'][:100]}...
+   """)
+            
+        case "cross_encoder":
+          print("Reranking top 25 results using cross_encoder method...")
+          results = hybrid_search.rrf_search(args.query, args.k, args.limit * 5)
+          pairs: list[tuple[str, str]] = []
+          for r in results:
+            pairs.append( (args.query, f"{r['doc'].get('title', '')} - {r.get('doc', '')}"))
+          encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+          scores = encoder.predict(pairs)
+          ids_and_scores: list[tuple[int, float]] = list(zip([ i for i in range(len(scores))], scores))
+          ids_and_scores.sort(key=lambda item: item[1], reverse=True)
+          for i, (id, score) in enumerate(ids_and_scores[:args.limit]):
+            r = results[id]
+            print(f"""{i+1}. {r['doc']['title']}
+   Cross Encoder Score: {score:.3f}
+   RRF score: {r['hybrid']:.3f}
+   BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
+   {r['doc']['description'][:100]}...
+   """)
 
         case _:
           results = hybrid_search.rrf_search(args.query, args.k, args.limit)
@@ -93,7 +137,8 @@ def main() -> None:
             print(f"""{i+1}. {r['doc']['title']}
    RRF score: {r['hybrid']:.3f}
    BM25 Rank: {r['bm25']:.0f}, Semantic Rank: {r['semantic']:.0f}
-   {r['doc']['description'][:100]}...""")
+   {r['doc']['description'][:100]}...
+   """)
 
     case _:
       parser.print_help()

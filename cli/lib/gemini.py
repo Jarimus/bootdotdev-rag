@@ -75,7 +75,7 @@ Query: "{query}"
   else:
     return query
   
-def rerank_query(query: str, doc: dict):
+def rerank_individual(query: str, doc: dict):
   load_dotenv()
   api_key = os.environ.get("GEMINI_API_KEY")
   client = genai.Client(api_key=api_key)
@@ -94,6 +94,28 @@ Rate 0-10 (10 = perfect match). Accuracy in tenths.
 Give me ONLY the number in your response, no other text or explanation.
 
 Score:""")
+
+  if res.text:
+    return res.text
+  else:
+    return query
+  
+def rerank_batch(query: str, doc_list_str: str):
+  load_dotenv()
+  api_key = os.environ.get("GEMINI_API_KEY")
+  client = genai.Client(api_key=api_key)
+
+  res = client.models.generate_content(model="gemini-2.0-flash-001", contents=f"""Rank these movies by relevance to the search query.
+
+Query: "{query}"
+
+Movies:
+{doc_list_str}
+
+Return ONLY the IDs in order of relevance (best match first). Return a valid JSON list, nothing else. For example:
+
+[1, 12, 34, 2, 75]
+""")
 
   if res.text:
     return res.text
