@@ -1,6 +1,7 @@
 import argparse
 from lib.hybrid_search import normalize_values, HybridSearch
 from data_handling import load_movies
+from lib.gemini import enhance_query
 
 
 def main() -> None:
@@ -22,6 +23,7 @@ def main() -> None:
   rrf_search_parser.add_argument("query", type=str, help="text to initiate the search with")
   rrf_search_parser.add_argument("--k", type=int, nargs="?", default=50, help="The k parameter (a constant) controls the weight between higher-ranked results and lower-ranked ones. Defaults to 50. Suggested range: 20-100")
   rrf_search_parser.add_argument("--limit", type=int, nargs="?", default=5, help="Limits the number of results. Defaults to 5.")
+  rrf_search_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method")
 
   args = parser.parse_args()
 
@@ -42,6 +44,13 @@ def main() -> None:
 {r['doc']['description'][:100]}""")
          
     case "rrf-search":
+      match args.enhance:
+        case "spell":
+          new_query = enhance_query(args.query)
+          if new_query != args.query:
+            print(f"Enhanced query ({args.enhance}): '{args.query}' -> '{new_query.strip()}'\n")
+            args.query = new_query
+
       movies = load_movies()["movies"]
       hybrid_search = HybridSearch(movies)
       results = hybrid_search.rrf_search(args.query, args.k, args.limit)
