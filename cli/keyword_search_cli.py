@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from keyword_commands import *
-from inverted_index import InvertedIndex
+from lib.inverted_index import InvertedIndex
 from search_utils import BM25_K1, BM25_B
 
 def main() -> None:
