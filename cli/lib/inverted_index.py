@@ -3,11 +3,14 @@ from data_handling import load_movies
 from collections import Counter
 from search_utils import BM25_K1, BM25_B
 from data_handling import CACHE_DIR, INDEX_FILE, DOCMAP_FILE, DOC_LENGTHS_FILE, TERM_FREQ_FILE
-import pickle, pathlib, math, shutil, os
+import pickle, math, os
+from tqdm import tqdm
+from pathlib import Path
 
 class InvertedIndex:
 
   def __init__(self) -> None:
+    print("--- Initialize inverted index ---")
     self.index_filepath = os.path.join(CACHE_DIR, INDEX_FILE)
     self.index: dict[str, set[int]] =  {}
     self.docmap_filepath = os.path.join(CACHE_DIR, DOCMAP_FILE)
@@ -91,27 +94,30 @@ class InvertedIndex:
     return top_scores
 
   def build(self):
-    # Only build if cache dir does not exist
-    if pathlib.Path(CACHE_DIR).exists():
-      print("Cache directory already exists, loading cache...")
-      try:
-        self.load()
-        return
-      except FileNotFoundError:
-        print("Cache file missing. Building cache.")
-        return
+    # Only build if all cache files exist
+    files = [
+      Path(CACHE_DIR, DOC_LENGTHS_FILE),
+      Path(CACHE_DIR, INDEX_FILE),
+      Path(CACHE_DIR, TERM_FREQ_FILE)
+    ]
+    for f in files:
+      if not f.exists():
+        break
+    else:
+      print("Cache directory already exists, loading data for inverted index...")
+      self.load()
+      return
     # First load data into memory
-    movies = load_movies()
-    for i, m in enumerate(movies["movies"]):
+    movies = load_movies()["movies"]
+    for m in tqdm(movies, "Adding documents...", len(movies)):
       self.__add_document(int(m["id"]), f"{m['title']} {m['description']}")
       self.docmap[int(m["id"])] = m
-      print(f"Building... ({i}/{len(movies["movies"])})")
     # Save to file
     self.save()
 
   def save(self):
     # Ensure directory exists
-    pathlib.Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
+    Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
     # Write index cache
     with open(self.index_filepath, "wb") as file:
       pickle.dump(self.index, file)
@@ -142,6 +148,12 @@ class InvertedIndex:
         if want_cache.lower() == "n":
           break
         if want_cache.lower() == "y":
-          if pathlib.Path(CACHE_DIR).exists(): shutil.rmtree(CACHE_DIR)
+          files = [
+            Path(CACHE_DIR, DOC_LENGTHS_FILE),
+            Path(CACHE_DIR, INDEX_FILE),
+            Path(CACHE_DIR, TERM_FREQ_FILE)
+          ]
+          for f in files:
+            f.unlink(missing_ok=True)
           self.build()
           break

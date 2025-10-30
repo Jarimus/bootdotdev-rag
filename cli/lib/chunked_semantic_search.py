@@ -7,6 +7,7 @@ from pathlib import Path
 
 class ChunkedSemanticSearch(SemanticSearch):
   def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    print("--- Initialize chunked semantic search ---")
     super().__init__(model_name)
     self.chunk_embeddings = None
     self.chunk_metadata = None
@@ -28,6 +29,7 @@ class ChunkedSemanticSearch(SemanticSearch):
           })
     self.chunk_embeddings = self.model.encode(chunk_list, show_progress_bar=True)
     self.chunk_metadata = chunk_metadata
+    Path(CACHE_DIR).mkdir(exist_ok=True)
     with open(Path(CACHE_DIR, CHUNK_EMBEDDINGS_FILE), "wb") as file:      
       np.save(file, self.chunk_embeddings)
       print("Chunk embeddings written to cache.")
@@ -57,7 +59,6 @@ class ChunkedSemanticSearch(SemanticSearch):
       return []
     query_embedding = self.generate_embedding(query)
     chunk_scores: list[dict] = []
-    print("Scoring movies...")
     for chunk_emb, chunk_meta in zip(self.chunk_embeddings, self.chunk_metadata):
       score = cosine_similarity(query_embedding, chunk_emb)
       chunk_scores.append({

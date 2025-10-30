@@ -6,9 +6,8 @@ from data_handling import load_movies, CACHE_DIR, MOVIE_EMBEDDINGS_FILE
 class SemanticSearch:
 
   def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:
-    print("Loading model...")
+    print("--- Initalize semantic search ---")
     self.model = SentenceTransformer(model_name)
-    print("Model ready!")
     self.embeddings = None
     self.embeddings_filepath = os.path.join(CACHE_DIR, MOVIE_EMBEDDINGS_FILE)
     self.documents = None
