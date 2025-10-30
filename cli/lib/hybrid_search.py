@@ -18,9 +18,7 @@ class HybridSearch:
 
   def weighted_search(self, query, alpha, limit=5) -> list[dict]:
     bm25_results = self._bm25_search(query, limit * 500)
-    # bm25_results = sorted(bm25_results, key=lambda item: item[0])
     semantic_results = self.semantic_search.search_chunks(query, limit * 500)
-    # semantic_results = sorted(semantic_results, key=lambda item: item["id"])
     # normalize bm25 scores
     normalized_bm25 = list(zip( [int(x[0]) for x in bm25_results], normalize_values([x[1] for x in bm25_results ])))
     # normalize semantic scores
@@ -52,21 +50,21 @@ class HybridSearch:
     for i, doc_id in enumerate(bm25_ranks):
       if doc_id not in results:
         results[doc_id] = {}
-      bm25_rrf = compute_rrf_score(i, k)
+      bm25_rrf = compute_rrf_score(i+1, k)
       results[doc_id]["bm25"] = i+1
       results[doc_id]["bm25_score"] = bm25_rrf
       results[doc_id]["doc"] = self.idx.docmap[doc_id]
       semantic_rrf = results[doc_id].get("semantic_score", 0)
-      results[doc_id]["hybrid"] = compute_hybrid_score(bm25_rrf, semantic_rrf, alpha)
+      results[doc_id]["hybrid"] = bm25_rrf + semantic_rrf, alpha
     for i, doc_id in enumerate(semantic_ranks):
       if doc_id not in results:
         results[doc_id] = {}
-      semantic_rrf = compute_rrf_score(i, k)
+      semantic_rrf = compute_rrf_score(i+1, k)
       results[doc_id]["semantic"] = i+1
       results[doc_id]["semantic_score"] = semantic_rrf
       results[doc_id]["doc"] = self.idx.docmap[doc_id]
       bm25_rrf = results[doc_id].get("bm25_score", 0)
-      results[doc_id]["hybrid"] = compute_hybrid_score(bm25_rrf, semantic_rrf, alpha)
+      results[doc_id]["hybrid"] = bm25_rrf + semantic_rrf
 
     return sorted(results.values(), key=lambda item: item["hybrid"], reverse=True)[:limit]
   
@@ -84,9 +82,7 @@ def normalize_values(values: list[float]) -> list[float]:
   return result
 
 def compute_hybrid_score(bm25score: float ,semantic_score: float, alpha: float = 0.5) -> float:
-  if bm25score == 0 or semantic_score == 0:
-    return 0
-  return alpha * bm25score + (1 - alpha) * semantic_score
+  return alpha*bm25score + (1-alpha)*semantic_score
 
 def compute_rrf_score(rank, k=60):
     return 1 / (k + rank)

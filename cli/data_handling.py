@@ -2,6 +2,7 @@ import json
 
 MOVIE_FILEPATH = "data/movies.json"
 STOPWORDS_FILEPATH = "data/stopwords.txt"
+GOLDEN_DATASET_FILEPATH = "data/golden_dataset.json"
 
 CACHE_DIR = "cache"
 DOC_LENGTHS_FILE = "doc_lengths.pkl"

@@ -108,7 +108,7 @@ def semantic_search_command(query: str, limit: int = 5):
   search_result = semantic_search.search(query, limit)
   for i, movie in enumerate(search_result):
     abbreviated_description = " ".join(movie[1]['description'].split()[:20])
-    print(f"{i+1}: {movie[1]['title']} (score: {movie[0]})\n{abbreviated_description}...")
+    print(f"{i+1}: {movie[1]['title']} (score: {movie[0]:.4f})\n{abbreviated_description}...")
 
 def fixed_size_chunking(text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = 0) -> list[str]:
   words: list[str] = text.split()
