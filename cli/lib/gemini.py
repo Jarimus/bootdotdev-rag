@@ -100,7 +100,7 @@ Score:""")
   else:
     return query
   
-def rerank_batch(query: str, doc_list_str: str):
+def LLM_Evaluate_results(query: str, doc_list_str: str):
   load_dotenv()
   api_key = os.environ.get("GEMINI_API_KEY")
   client = genai.Client(api_key=api_key)
@@ -116,6 +116,35 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
 
 [1, 12, 34, 2, 75]
 """)
+
+  if res.text:
+    return res.text
+  else:
+    return query
+
+def rerank_batch(query: str, doc_list_str: str):
+  load_dotenv()
+  api_key = os.environ.get("GEMINI_API_KEY")
+  client = genai.Client(api_key=api_key)
+
+  res = client.models.generate_content(model="gemini-2.0-flash-001", contents=f"""Rate how relevant each result is to this query:
+
+Query: "{query}"
+-----------------------------------------------------
+Results:
+{doc_list_str}
+-----------------------------------------------------
+Rate each 0-3 where:
+- 3: Highly relevant
+- 2: Relevant
+- 1: Marginally relevant
+- 0: Not relevant
+
+Do NOT give any numbers other than 0, 1, 2, or 3.
+
+Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+[2, 0, 3, 2, 0, 1]""")
 
   if res.text:
     return res.text

@@ -6,12 +6,10 @@ load_dotenv()
 api_key = os.environ.get("GEMINI_API_KEY")
 
 #Test api key
-if api_key is None:
-  print("api key could not be loaded")
-  exit(1)
-print(f"Using key {api_key[:3]}...")
-print("""Prompt Tokens: 19
-Response Tokens: Lots""")
+# if api_key is None:
+#   print("api key could not be loaded")
+#   exit(1)
+# print(f"Using key {api_key[:3]}...")
 
 client = genai.Client(api_key=api_key)
 

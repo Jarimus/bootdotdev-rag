@@ -1,7 +1,11 @@
-import os
-
+from lib.logging import rrf_results_log
 from lib.inverted_index import InvertedIndex
 from lib.chunked_semantic_search import ChunkedSemanticSearch
+from lib.gemini import LLM_Evaluate_results, rerank_batch, rerank_individual
+from sentence_transformers.cross_encoder import CrossEncoder
+from tqdm import tqdm
+from time import sleep
+import json
 
 
 class HybridSearch:
@@ -55,7 +59,7 @@ class HybridSearch:
       results[doc_id]["bm25_score"] = bm25_rrf
       results[doc_id]["doc"] = self.idx.docmap[doc_id]
       semantic_rrf = results[doc_id].get("semantic_score", 0)
-      results[doc_id]["hybrid"] = bm25_rrf + semantic_rrf, alpha
+      results[doc_id]["hybrid"] = bm25_rrf + semantic_rrf
     for i, doc_id in enumerate(semantic_ranks):
       if doc_id not in results:
         results[doc_id] = {}
@@ -86,3 +90,49 @@ def compute_hybrid_score(bm25score: float ,semantic_score: float, alpha: float =
 
 def compute_rrf_score(rank, k=60):
     return 1 / (k + rank)
+
+def rrf_search_individual(hybrid_search: HybridSearch, query: str, k: int = 50, limit: int = 5):
+  results = hybrid_search.rrf_search(query, k, limit * 5)
+  rrf_results_log(results)
+  for r in tqdm(results, "LLM Reranking", len(results)):
+    doc = r["doc"]
+    try:
+      LLM_score = float(rerank_individual(query, doc))
+      r["LLM_score"] = LLM_score
+    except ValueError:
+      print(f"LLM did not provide an appropriate ranking: {LLM_score}")
+      r["LLM_score"] = 0
+    sleep(3)
+  results.sort(key=lambda item: item["LLM_score"], reverse=True)
+  return results
+
+def rrf_search_batch(hybrid_search: HybridSearch, query: str, k: int = 50, limit: int = 5):
+  results = hybrid_search.rrf_search(query, k, limit * 5)
+  rrf_results_log(results)
+  doc_list_str = ""
+  for i, r in enumerate(results):
+    doc_list_str += f"""Title: {r['doc']['title']}
+ID: {i}
+Description: {r['doc']['description']}
+-------------------------------------------------------"""
+  print(f"Reranking the top {limit} results using batch method...\n")
+  LLM_json = rerank_batch(query, doc_list_str)
+  LLM_IDs = json.loads(LLM_json)
+  print("LLM ranking:", LLM_IDs)
+  final_results = []
+  for i in LLM_IDs:
+    final_results.append(results[i])
+  return final_results
+
+def rrf_search_cross_encoder(hybrid_search: HybridSearch, query: str, k: int = 50, limit: int = 5):
+  print("Reranking top 25 results using cross_encoder method...")
+  results = hybrid_search.rrf_search(query, k, limit * 5)
+  rrf_results_log(results)
+  pairs: list[tuple[str, str]] = []
+  for r in results:
+    pairs.append( (query, f"{r['doc'].get('title', '')} - {r.get('doc', '')}"))
+  encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+  scores = encoder.predict(pairs)
+  for i, score in enumerate(scores):
+    results[i]['encoder_score'] = score
+  return sorted(results, key=lambda item: item['encoder_score'], reverse=True)

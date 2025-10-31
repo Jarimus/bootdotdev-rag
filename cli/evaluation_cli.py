@@ -28,10 +28,14 @@ def main():
     for r in results:
       if r['doc']['title'] in tc['relevant_docs']:
         relevant_found += 1
+    precision = relevant_found / len(results)
+    recall = relevant_found / len(tc['relevant_docs'])
+    f1 = 2 * (precision * recall) / (precision + recall)
     test_precisions.append({
       "query": tc['query'],
-      "precision": relevant_found / len(results),
-      "recall": relevant_found / len(tc['relevant_docs']),
+      "precision": precision,
+      "recall": recall,
+      "f1": f1,
       "retrieved": ", ".join([ r['doc']['title'] for r in results]),
       "relevant": tc["relevant_docs"]
     })
@@ -43,6 +47,7 @@ def main():
 - Query: {t['query']}
 \tPrecision@{limit}: {t['precision']:.4f}
 \tRecall@{limit}: {t['recall']:.4f}
+\tF1 Score: {t['f1']:.4f}
 \tRetrieved: {t['retrieved']}
 \tRelevant: {t['relevant']}""")
     
